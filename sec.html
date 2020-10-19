@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Sec</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="https://cdn.datatables.net/1.10.11/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.10.11/js/dataTables.bootstrap.min.js"></script>
+  <script src="../sjcl.js"></script>
+</head>
+
+<body>
+
+  <div class="container theme-showcase">
+      <div class="row">
+          <div class="col-md-12">
+              <table id="dataTbl" class="table table-striped table-bordered table-condensed db_data">
+              </table>
+          </div>
+      </div>
+  </div>
+  <br>
+  <div class="container theme-showcase">
+         <div class="form-group">
+              <label for="usr">Key:</label>
+              <input id="passTxt" type="password" class="form-control" name="pass">
+         </div>
+         <div class="form-group">
+              <label for="usr">Clear Text:</label>
+              <textarea class="form-control" rows="1" id="clearTxt"></textarea>
+          </div>
+          <div class="form-group">
+              <label for="usr">Encrypted Text:</label>
+              <textarea class="form-control" rows="1" id="encTxt"></textarea>
+          </div>
+          <div class="form-group">
+              <input class="btn btn-md btn-success" id="encBtn" name="enc" type="submit" value="&nbsp;&nbsp;&nbsp;Encrypt&nbsp;&nbsp;&nbsp;">
+              <input class="btn btn-md btn-warning" id="decBtn" name="dec" type="submit" value="&nbsp;&nbsp;&nbsp;Decrypt&nbsp;&nbsp;&nbsp;">
+              <input class="btn btn-md btn-success" id="clearBtn" name="clear" type="submit" value="&nbsp;&nbsp;&nbsp;Clear&nbsp;&nbsp;&nbsp;">
+	  </div>
+  </div>
+
+</body>
+<script>
+  $(document).ready(function() {
+      $('#encBtn').click(function() {
+          var paramsObj = {
+              adata: "",
+              iter: 1000,
+              mode: "ccm",
+              ts: 128,
+              ks: 256
+          };
+          var rpObj = {};
+	  var jsonValidation = JSON.parse("{ \"message\": \"" + btoa($('#clearTxt').val()) + "\"}")
+          var encTxt = sjcl.encrypt($('#passTxt').val(), btoa($('#clearTxt').val()), paramsObj, rpObj).replace(/,/g, ",\n");
+	  encTxt = btoa(encTxt)
+          $('#encTxt').val(encTxt);
+      });
+
+      $('#decBtn').click(function() {
+          var rpObj = {};
+	  var encTxt = $('#encTxt').val()
+	  encTxt = atob(encTxt)
+          var clearTxt = sjcl.decrypt($('#passTxt').val(), encTxt, {}, rpObj);
+	  clearTxt = atob(clearTxt)
+          $('#clearTxt').val(clearTxt);
+          $('#passTxt').val('');
+      });
+
+      $('#clearBtn').click(function() {
+          $('#clearTxt').val('');
+      });
+
+  });
+
+</script>
+</html>
