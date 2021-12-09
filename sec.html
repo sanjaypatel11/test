@@ -68,11 +68,12 @@
           var clearTxt = sjcl.decrypt($('#passTxt').val(), encTxt, {}, rpObj);
 	  clearTxt = atob(clearTxt)
           $('#clearTxt').val(clearTxt);
-          $('#passTxt').val('');
+          //$('#passTxt').val('');
       });
 
       $('#clearBtn').click(function() {
           $('#clearTxt').val('');
+	  $('#encTxt').val('');
       });
 
   });
