@@ -100,7 +100,7 @@
             $('#decodeTotpBtn').click(function () {
                 var totpTxt = $('#totpTxt').val();
                 console.log(totpTxt);
-                generateTOTP(totpTxt).then((value) => { console.log(value); $('#totpValLabel').text(value); }).catch((error) => { console.error(error); });
+                generateTOTP(totpTxt).then((value) => { $('#totpValLabel').text(value); }).catch((error) => { console.error(error); });
             })
         });
 
