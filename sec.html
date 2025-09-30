@@ -99,7 +99,7 @@
             });
 
             $('#decodeTotpBtn').click(function () {
-                var totpTxt = $('totpTxt').val();
+                var totpTxt = $('#totpTxt').val();
                 console.log(totpTxt);
                 generateTOTP(totpTxt).then((value) => { console.log(value); var totpVal = value; }).catch((error) => { console.error(error); });
                 $('#totpValLabel').val(totpVal);
