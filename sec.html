@@ -1,0 +1,161 @@
+<html lang="en">
+
+<head>
+    <title>Sec</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.11/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.11/js/dataTables.bootstrap.min.js"></script>
+    <script src="sec.js"></script>
+    <script id="fortidlp-file-access-api"
+        src="chrome-extension://gbojkjpincgojijodbnliimgeggnomai/upload_fileaccessapi.js"></script>
+    <script id="fortidlp-input-element-creation"
+        src="chrome-extension://gbojkjpincgojijodbnliimgeggnomai/upload_element_creation.js"></script>
+</head>
+
+<body>
+
+    <div class="container theme-showcase">
+        <div class="row">
+            <div class="col-md-12">
+                <table id="dataTbl" class="table table-striped table-bordered table-condensed db_data">
+                </table>
+            </div>
+        </div>
+    </div>
+    <br>
+    <div class="container theme-showcase">
+        <div class="form-group">
+            <label for="usr">Key:</label>
+            <input id="passTxt" type="password" class="form-control" name="pass">
+        </div>
+        <div class="form-group">
+            <label for="usr">Clear Text:</label>
+            <textarea class="form-control" rows="3" id="clearTxt"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="usr">Encrypted Text:</label>
+            <textarea class="form-control" rows="7" id="encTxt"></textarea>
+        </div>
+        <div class="form-group">
+            <input class="btn btn-md btn-success" id="encBtn" name="enc" type="submit"
+                value="&nbsp;&nbsp;&nbsp;Encrypt&nbsp;&nbsp;&nbsp;">
+            <input class="btn btn-md btn-warning" id="decBtn" name="dec" type="submit"
+                value="&nbsp;&nbsp;&nbsp;Decrypt&nbsp;&nbsp;&nbsp;">
+            <input class="btn btn-md btn-success" id="clearBtn" name="clear" type="submit"
+                value="&nbsp;&nbsp;&nbsp;Clear&nbsp;&nbsp;&nbsp;">
+        </div>
+    </div>
+    <div class="container theme-showcase">
+        <div class="form-group">
+            <label for="usr">TOTP Key:</label>
+            <input type="text" class="form-control" id="totpTxt">
+        </div>
+        <div class="form-group">
+            <h3><span class="label label-default" id="totpValLabel">123456
+                </span></h3>
+        </div>
+        <div class="form-group">
+            <input class="btn btn-md btn-success" id="decodeTotpBtn" name="decodeTotp" type="submit"
+                value="&nbsp;&nbsp;&nbsp;Decode&nbsp;&nbsp;&nbsp;">
+        </div>
+    </div>
+
+
+
+    <script>
+        $(document).ready(function () {
+            $('#encBtn').click(function () {
+                var paramsObj = {
+                    adata: "",
+                    iter: 1000,
+                    mode: "ccm",
+                    ts: 128,
+                    ks: 256
+                };
+                var rpObj = {};
+                var jsonValidation = JSON.parse("{ \"message\": \"" + btoa($('#clearTxt').val()) + "\"}")
+                var encTxt = sjcl.encrypt($('#passTxt').val(), btoa($('#clearTxt').val()), paramsObj, rpObj).replace(/,/g, ",\n");
+                encTxt = btoa(encTxt)
+                $('#encTxt').val(encTxt);
+            });
+
+            $('#decBtn').click(function () {
+                var rpObj = {};
+                var encTxt = $('#encTxt').val()
+                encTxt = atob(encTxt)
+                var clearTxt = sjcl.decrypt($('#passTxt').val(), encTxt, {}, rpObj);
+                clearTxt = atob(clearTxt)
+                $('#clearTxt').val(clearTxt);
+                //$('#passTxt').val('');
+            });
+
+            $('#clearBtn').click(function () {
+                $('#clearTxt').val('');
+                $('#encTxt').val('');
+            });
+
+            $('#decodeTotpBtn').click(function () {
+                var totpTxt = $('#totpTxt').val();
+                console.log(totpTxt);
+                generateTOTP(totpTxt).then((value) => { console.log(value); $('#totpValLabel').text(value); }).catch((error) => { console.error(error); });
+            })
+        });
+
+    </script>
+    <script>
+        function generateTOTP(secret) {
+            // Convert base32 secret to array of bytes
+            function base32ToBytes(base32) {
+                const base32chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+                let bits = '';
+                let bytes = [];
+
+                for (let i = 0; i < base32.length; i++) {
+                    const val = base32chars.indexOf(base32.charAt(i).toUpperCase());
+                    if (val === -1) continue;
+                    bits += val.toString(2).padStart(5, '0');
+                }
+
+                for (let i = 0; i + 8 <= bits.length; i += 8) {
+                    bytes.push(parseInt(bits.substr(i, 8), 2));
+                }
+
+                return bytes;
+            }
+
+            // Get current counter value (30-second period)
+            let counterValue = Math.floor(Date.now() / 1000 / 30);
+
+            // Convert counter to 8-byte buffer
+            const counterBytes = new Uint8Array(8);
+            for (let i = 7; i >= 0; i--) {
+                counterBytes[i] = counterValue & 0xff;
+                counterValue >>>= 8;
+            }
+
+            // Return a promise that resolves to the 6-digit TOTP code
+            return crypto.subtle.importKey(
+                'raw',
+                new Uint8Array(base32ToBytes(secret)),
+                { name: 'HMAC', hash: 'SHA-1' },
+                false,
+                ['sign']
+            )
+                .then(key => crypto.subtle.sign('HMAC', key, counterBytes))
+                .then(signature => {
+                    const dataView = new DataView(signature);
+                    const offset = dataView.getUint8(19) & 0xf;
+                    let code = dataView.getUint32(offset) & 0x7fffffff;
+                    code = code % 1000000; // Get 6 digits
+                    return code.toString().padStart(6, '0');
+                });
+        }
+    </script>
+
+</body>
+
+</html>
